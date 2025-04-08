@@ -20,13 +20,11 @@ typedef enum {
 void vControlHeater(void *pvParameters);
 void vReadTemperatureHandler(void *pvParameters);
 void vDisplayDataHandler(void *pvParameters);
-//void vHeaterSettingHandler(void *pvParameters);
+void vHeaterSettingHandler(void *pvParameters);
 
 /* FreeRTOS Mutexes */
 xSemaphoreHandle xBtnSemaphore;
 xSemaphoreHandle xDataMutex;
-
-
 
 uint8 Temperature = 22;
 uint8 Heater_Status[4];
@@ -51,7 +49,7 @@ int main()
     xTaskCreate(vControlHeater, "Task 1", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
     xTaskCreate(vReadTemperatureHandler, "Task 2", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
     xTaskCreate(vDisplayDataHandler, "Task 3", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-    //xTaskCreate(vHeaterSettingHandler, "Task 4", 512, NULL, 4, NULL);
+    xTaskCreate(vHeaterSettingHandler, "Task 4", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
 
     vTaskStartScheduler();
 
@@ -94,16 +92,6 @@ void vControlHeater(void *pvParameters)
                 case OFF:
                     Desired_Heater_Lvl = LOW; break;
                 }
-
-
-
-                UART0_SendString("\r\nTemperature:");
-                UART0_SendInteger(Temperature);
-                UART0_SendString("\r\nDesired Heating Level:");
-                UART0_SendInteger(Desired_Heater_Lvl);
-                UART0_SendString("\r\nHeater Status:");
-                UART0_SendString(Heater_Status);
-                UART0_SendString("\r\n");
                 if(Desired_Heater_Lvl - Temperature >= 10)
                 {
                     GPIO_LedsOff();
@@ -138,15 +126,13 @@ void vControlHeater(void *pvParameters)
 }
 
 
-
+//every 2 seconds
 void vReadTemperatureHandler(void *pvParameters)
 {
     TickType_t xLastWakeTime = xTaskGetTickCount();
-    GPIO_RedLedOn();
+
     for(;;)
     {
-        GPIO_RedLedOn();
-
         if(xSemaphoreTake(xDataMutex,  portMAX_DELAY) == pdTRUE)
         {
 
@@ -173,11 +159,13 @@ void vReadTemperatureHandler(void *pvParameters)
     }
 }
 
+//every 1 second
 void vDisplayDataHandler(void *pvParameters)
 {
-    TickType_t ticks = pdMS_TO_TICKS(1000);
+    TickType_t ticks = pdMS_TO_TICKS(600);
     for(;;)
     {
+
         UART0_SendString("Display\r\n");
 
         UART0_SendString("\r\nTemperature:");
@@ -189,6 +177,31 @@ void vDisplayDataHandler(void *pvParameters)
         UART0_SendString("\r\n");
         vTaskDelay(ticks);
 
+    }
+}
+
+void vHeaterSettingHandler(void *pvParameters)
+{
+    TickType_t ticks = pdMS_TO_TICKS(500);
+    for(;;)
+    {
+        if(xSemaphoreTake(xDataMutex, portMAX_DELAY) == pdTRUE)
+        {
+
+
+            if(Desired_Heater_Lvl - Temperature >= 10)
+                strcpy(Heater_Status,"ON");
+            else if(Desired_Heater_Lvl - Temperature >= 5)
+                strcpy(Heater_Status,"ON");
+            else if(Desired_Heater_Lvl - Temperature >= 2)
+                strcpy(Heater_Status,"ON");
+            else if(Temperature - Desired_Heater_Lvl >= 0)
+                strcpy(Heater_Status,"OFF");
+
+            xSemaphoreGive(xDataMutex);
+        }
+        UART0_SendString("Heater Setting\r\n");
+        vTaskDelay(ticks);
     }
 }
 
