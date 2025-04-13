@@ -8,6 +8,9 @@
 #include "gpio.h"
 #include "tm4c123gh6pm_registers.h"
 #include "adc.h"
+#include "GPTM.h"
+
+#include <string.h>
 
 /* The HW setup function */
 static void prvSetupHardware( void );
@@ -16,19 +19,30 @@ typedef enum {
     OFF=0, LOW=25, MEDIUM=30, HIGH=35
 }Lvl;
 
+const char* heaterLevelStr[] = {
+    "OFF", "LOW", "MEDIUM", "HIGH"
+};
+
+
 /* FreeRTOS tasks */
 void vControlHeater(void *pvParameters);
 void vReadTemperatureHandler(void *pvParameters);
 void vDisplayDataHandler(void *pvParameters);
 void vHeaterSettingHandler(void *pvParameters);
+void vDiagnostics(void *pvParameters);
 
 /* FreeRTOS Mutexes */
 xSemaphoreHandle xBtnSemaphore;
 xSemaphoreHandle xDataMutex;
+xSemaphoreHandle xGPTM_Mutex;
+xSemaphoreHandle xSystemFailureSemaphore;
 
 uint8 Temperature = 22;
 uint8 Heater_Status[4];
+sint32 Last_Failure_Timestamp = -1;
+sint32 Last_HeatLvl_Timestamp = -1;
 Lvl Desired_Heater_Lvl = OFF;
+
 
 int main()
 {
@@ -38,6 +52,9 @@ int main()
     /* Create a Mutex */
     xBtnSemaphore = xSemaphoreCreateBinary();
     xDataMutex = xSemaphoreCreateMutex();
+    xGPTM_Mutex = xSemaphoreCreateMutex();
+    xSystemFailureSemaphore = xSemaphoreCreateBinary();
+
 
     if (xDataMutex == NULL || xBtnSemaphore == NULL)
     {
@@ -50,6 +67,7 @@ int main()
     xTaskCreate(vReadTemperatureHandler, "Task 2", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
     xTaskCreate(vDisplayDataHandler, "Task 3", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
     xTaskCreate(vHeaterSettingHandler, "Task 4", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
+    xTaskCreate(vDiagnostics, "Task 5", configMINIMAL_STACK_SIZE, NULL, 4, NULL);
 
     vTaskStartScheduler();
 
@@ -67,6 +85,7 @@ static void prvSetupHardware( void )
     UART0_Init();
     GPIO_SW1EdgeTriggeredInterruptInit();
     ADC_init();
+    GPTM_WTimer0Init();
 }
 
 
@@ -142,20 +161,21 @@ void vReadTemperatureHandler(void *pvParameters)
                 GPIO_LedsOff();
                 GPIO_RedLedOn();
                 UART0_SendString("Heater Turned Off!\r\nInvalid Temp Range\r\n");
+                Last_Failure_Timestamp = GPTM_WTimer0Read();
+                xSemaphoreGive(xSystemFailureSemaphore);
             }
             else
             {
                 GPIO_RedLedOff();
             }
             xSemaphoreGive(xDataMutex);
-
         }
         else
         {
             UART0_SendString("Mutex timeout!");
         }
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(2000));
-        UART0_SendString("Read Temp\r\n");
+        //UART0_SendString("Read Temp\r\n");
     }
 }
 
@@ -182,7 +202,7 @@ void vDisplayDataHandler(void *pvParameters)
 
 void vHeaterSettingHandler(void *pvParameters)
 {
-    TickType_t ticks = pdMS_TO_TICKS(500);
+    TickType_t ticks = pdMS_TO_TICKS(1000);
     for(;;)
     {
         if(xSemaphoreTake(xDataMutex, portMAX_DELAY) == pdTRUE)
@@ -200,11 +220,47 @@ void vHeaterSettingHandler(void *pvParameters)
 
             xSemaphoreGive(xDataMutex);
         }
-        UART0_SendString("Heater Setting\r\n");
+        //UART0_SendString("Heater Setting\r\n");
         vTaskDelay(ticks);
     }
 }
 
+void vDiagnostics(void *pvParameters)
+{
+    TickType_t ticks = pdMS_TO_TICKS(300);
+    for(;;)
+    {
+
+        UART0_SendString("Diagnostics\r");
+        if(xSemaphoreTake(xDataMutex, portMAX_DELAY) == pdTRUE)
+        {
+            char str[6];
+            UART0_SendString("Last Heater Level = ");
+            switch(Desired_Heater_Lvl)
+            {
+            case OFF: UART0_SendString("OFF"); break;
+            case LOW: UART0_SendString("LOW"); break;
+            case MEDIUM: UART0_SendString("MEDIUM"); break;
+            case HIGH: UART0_SendString("HIGH"); break;
+            }
+            UART0_SendString("\r\n");
+            xSemaphoreGive(xDataMutex);
+        }
+        if(xSemaphoreTake(xSystemFailureSemaphore, pdMS_TO_TICKS(100)) == pdTRUE)
+        {
+
+            UART0_SendString("Failure\r\n");
+            UART0_SendString("Timestamp = ");
+            if(xSemaphoreTake(xGPTM_Mutex, pdMS_TO_TICKS(100)) == pdTRUE)
+            {
+                UART0_SendInteger(Last_Failure_Timestamp);
+                xSemaphoreGive(xGPTM_Mutex);
+            }
+            UART0_SendString("\r\n");
+        }
+        vTaskDelay(ticks);
+     }
+}
 void  GPIOPortF_Handler(void)
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -213,6 +269,12 @@ void  GPIOPortF_Handler(void)
     {
         xSemaphoreGiveFromISR(xBtnSemaphore, &xHigherPriorityTaskWoken);
         GPIO_PORTF_ICR_REG   |= (1<<4);       /* Clear Trigger flag for PF0 (Interrupt Flag) */
+        if(xSemaphoreTakeFromISR(xGPTM_Mutex, portMAX_DELAY) == pdTRUE)
+        {
+            Last_HeatLvl_Timestamp = GPTM_WTimer0Read();
+            xSemaphoreGiveFromISR(xGPTM_Mutex,xHigherPriorityTaskWoken);
+        }
     }
+
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }

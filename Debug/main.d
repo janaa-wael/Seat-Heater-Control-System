@@ -28,6 +28,9 @@ main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/Common/std_types.h
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/GPIO/gpio.h
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/tm4c123gh6pm_registers.h
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/ADC/adc.h
+main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/GPTM/GPTM.h
+main.obj: D:/Program\ Files/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/string.h
+main.obj: D:/Program\ Files/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/xlocale/_string.h
 
 ../main.c:
 
@@ -84,4 +87,10 @@ D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/GPIO/gpio.h:
 D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/tm4c123gh6pm_registers.h:
 
 D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/ADC/adc.h:
+
+D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/GPTM/GPTM.h:
+
+D:/Program\ Files/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/string.h:
+
+D:/Program\ Files/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/xlocale/_string.h:
 
