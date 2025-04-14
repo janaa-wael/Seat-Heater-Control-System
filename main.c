@@ -31,18 +31,7 @@ uint32 ullTasksOutTime[MAX_TASKS];
 uint32 ullTasksInTime[MAX_TASKS];
 uint32 ullTasksTotalTime[MAX_TASKS];
 
-#define traceTASK_SWITCHED_IN() \
-do { \
-    uint32 taskInTag = (uint32)(pxCurrentTCB->pxTaskTag); \
-    ullTasksInTime[taskInTag] = GPTM_xTimerRead(); \
-} while(0);
 
-#define traceTASK_SWITCHED_OUT() \
-do { \
-    uint32 taskOutTag = (uint32)(pxCurrentTCB->pxTaskTag); \
-    ullTasksOutTime[taskOutTag] = GPTM_xTimerRead(); \
-    ullTasksTotalTime[taskOutTag] += ullTasksOutTime[taskOutTag] - ullTasksInTime[taskOutTag]; \
-} while(0);
 
 /* The HW setup function */
 static void prvSetupHardware( void );
@@ -329,7 +318,7 @@ void vRuntimeMeasurements(void *pvParameters)
         uint8 ucCounter, ucCPU_Load;
         uint32 ullTotalTasksTime = 0;
         vTaskDelayUntil(&xLastWakeTime, RUNTIME_MEASUREMENTS_PERIODICITY);
-        for(ucCounter = 1; ucCounter < MAX_TASKS; ucCounter++)
+        for(ucCounter = 1; ucCounter < 7; ucCounter++)
         {
             ullTotalTasksTime += ullTasksTotalTime[ucCounter];
         }
@@ -338,8 +327,8 @@ void vRuntimeMeasurements(void *pvParameters)
         taskENTER_CRITICAL();
         UART0_SendString("CPU Load is ");
         UART0_SendInteger(ucCPU_Load);
-        UART0_SendString("Task 2: ");
-        UART0_SendInteger(ullTasksTotalTime[5]);
+        //UART0_SendString("Task 2: ");
+        //UART0_SendInteger(ullTasksTotalTime[5]);
         UART0_SendString("% \r\n");
         taskEXIT_CRITICAL();
     }

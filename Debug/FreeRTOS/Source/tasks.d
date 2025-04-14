@@ -17,6 +17,8 @@ FreeRTOS/Source/tasks.obj: D:/Program\ Files/ccs/tools/compiler/ti-cgt-arm_20.2.
 FreeRTOS/Source/tasks.obj: D:/Program\ Files/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/machine/_stdint.h
 FreeRTOS/Source/tasks.obj: D:/Program\ Files/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/sys/_stdint.h
 FreeRTOS/Source/tasks.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOSConfig.h
+FreeRTOS/Source/tasks.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/GPTM/GPTM.h
+FreeRTOS/Source/tasks.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/Common/std_types.h
 FreeRTOS/Source/tasks.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/projdefs.h
 FreeRTOS/Source/tasks.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/portable.h
 FreeRTOS/Source/tasks.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/deprecated_definitions.h
@@ -60,6 +62,10 @@ D:/Program\ Files/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/machine/_stdi
 D:/Program\ Files/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/sys/_stdint.h:
 
 D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOSConfig.h:
+
+D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/GPTM/GPTM.h:
+
+D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/Common/std_types.h:
 
 D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/projdefs.h:
 

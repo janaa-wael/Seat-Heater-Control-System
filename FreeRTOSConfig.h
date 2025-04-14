@@ -18,6 +18,8 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
+#include "GPTM.h"
+#include "std_types.h"
 /******************************************************************************/
 /* Scheduling behavior related definitions. **********************************/
 /******************************************************************************/
@@ -136,6 +138,24 @@ PRIORITY THAN THIS! (higher priorities are lower numeric values. */
 /******************************************************************************/
 /* Debugging assistance. ******************************************************/
 /******************************************************************************/
+
+extern uint32 ullTasksOutTime[6];
+extern uint32 ullTasksInTime[6];
+extern uint32 ullTasksTotalTime[6];
+
+#define traceTASK_SWITCHED_IN()                                    \
+do{                                                                \
+    uint32 taskInTag = (uint32)(pxCurrentTCB->pxTaskTag);          \
+    ullTasksInTime[taskInTag] = GPTM_WTimer0Read();                \
+}while(0);
+
+#define traceTASK_SWITCHED_OUT()                                                                 \
+do{                                                                                              \
+    uint32 taskOutTag = (uint32)(pxCurrentTCB->pxTaskTag);                                       \
+    ullTasksOutTime[taskOutTag] = GPTM_WTimer0Read();                                            \
+    ullTasksTotalTime[taskOutTag] += ullTasksOutTime[taskOutTag] - ullTasksInTime[taskOutTag];   \
+}while(0);
+
 
 /* Normal assert() semantics without relying on the provision of an assert.h header file. */
 #define configASSERT( x ) if( ( x ) == 0 ) { taskDISABLE_INTERRUPTS(); for( ;; ); }
