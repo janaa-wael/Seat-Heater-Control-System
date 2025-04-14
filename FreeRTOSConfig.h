@@ -51,6 +51,7 @@
  * TickType_t is defined to be an unsigned 32-bit type. */
 #define configUSE_16_BIT_TICKS                0
 
+#define configUSE_TASK_SWITCH_HOOK    1  // Enable task switch hooks
 /******************************************************************************/
 /* Memory allocation related definitions. *************************************/
 /******************************************************************************/
@@ -139,9 +140,9 @@ PRIORITY THAN THIS! (higher priorities are lower numeric values. */
 /* Debugging assistance. ******************************************************/
 /******************************************************************************/
 
-extern uint32 ullTasksOutTime[6];
-extern uint32 ullTasksInTime[6];
-extern uint32 ullTasksTotalTime[6];
+extern uint32 ullTasksOutTime[7];
+extern uint32 ullTasksInTime[7];
+extern uint32 ullTasksTotalTime[7];
 
 #define traceTASK_SWITCHED_IN()                                    \
 do{                                                                \

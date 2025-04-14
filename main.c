@@ -12,20 +12,19 @@
 
 #include <string.h>
 
-extern uint32_t get_timestamp_us(void);
-#define MAX_TASKS                           6
-#define CONTROL_HEATER_PERIODICITY          200
-#define READ_TEMP_PERIODICITY               100
-#define DISPLAY_DATA_PERIODICITY            400
-#define HEATER_SETTING_PERIODICITY          250
-#define DIAGNOSTICS_PERIODICITY             300
-#define RUNTIME_MEASUREMENTS_PERIODICITY    500
+#define MAX_TASKS                           7
+
+#define CONTROL_HEATER_PERIODICITY          10U
+#define READ_TEMP_PERIODICITY               80U
+#define DISPLAY_DATA_PERIODICITY            20U
+#define HEATER_SETTING_PERIODICITY          25U
+#define DIAGNOSTICS_PERIODICITY             30U
+#define RUNTIME_MEASUREMENTS_PERIODICITY    80U
 
 
 uint32_t task_start_time[MAX_TASKS] = {0};
 uint32_t task_runtime[MAX_TASKS] = {0};
 
-extern void* pxCurrentTCB;
 
 uint32 ullTasksOutTime[MAX_TASKS];
 uint32 ullTasksInTime[MAX_TASKS];
@@ -181,7 +180,7 @@ void vControlHeater(void *pvParameters)
                 xSemaphoreGive(xDataMutex);
             }
         }
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(CONTROL_HEATER_PERIODICITY));
+        vTaskDelayUntil(&xLastWakeTime, CONTROL_HEATER_PERIODICITY);
 
         //UART0_SendString("Control Heater\r\n");
     }
@@ -202,7 +201,7 @@ void vReadTemperatureHandler(void *pvParameters)
             {
                 GPIO_LedsOff();
                 GPIO_RedLedOn();
-                UART0_SendString("Heater Turned Off!\r\nInvalid Temp Range\r\n");
+                //UART0_SendString("Heater Turned Off!\r\nInvalid Temp Range\r\n");
                 Last_Failure_Timestamp = GPTM_WTimer0Read();
                 xSemaphoreGive(xSystemFailureSemaphore);
             }
@@ -216,7 +215,7 @@ void vReadTemperatureHandler(void *pvParameters)
         {
             UART0_SendString("Mutex timeout!");
         }
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(READ_TEMP_PERIODICITY));
+        vTaskDelayUntil(&xLastWakeTime, READ_TEMP_PERIODICITY);
         //UART0_SendString("Read Temp\r\n");
     }
 }
@@ -228,7 +227,7 @@ void vDisplayDataHandler(void *pvParameters)
     for(;;)
     {
        //uint32 start_time = GPTM_WTimer0Read();
-        UART0_SendString("Display\r\n");
+        //UART0_SendString("Display\r\n");
 
         UART0_SendString("\r\nTemperature:");
         UART0_SendInteger(Temperature);
@@ -327,8 +326,8 @@ void vRuntimeMeasurements(void *pvParameters)
         taskENTER_CRITICAL();
         UART0_SendString("CPU Load is ");
         UART0_SendInteger(ucCPU_Load);
-        //UART0_SendString("Task 2: ");
-        //UART0_SendInteger(ullTasksTotalTime[5]);
+        //UART0_SendString("Task 1: ");
+        //UART0_SendInteger(ullTasksTotalTime[1]);
         UART0_SendString("% \r\n");
         taskEXIT_CRITICAL();
     }

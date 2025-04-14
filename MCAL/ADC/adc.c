@@ -84,7 +84,8 @@ uint32 ADC_readValue(void)
     adcResult = ADC0_SSFIFO3_R;
     adcResultVoltage = adcResult * ADC_REF_VOLTAGE / ADC_MAX_VALUE;
     ADC0_ISC_R =(1<<3);
-    return adcResult;
+    float tempC = (adcResultVoltage - 0.5f) * 100.0f;  // TMP36: 0.5V offset at 0°C
+    return tempC;
 }
 
 
