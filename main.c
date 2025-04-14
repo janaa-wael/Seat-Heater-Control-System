@@ -13,7 +13,15 @@
 #include <string.h>
 
 extern uint32_t get_timestamp_us(void);
-#define MAX_TASKS 5
+#define MAX_TASKS                           6
+#define CONTROL_HEATER_PERIODICITY          200
+#define READ_TEMP_PERIODICITY               1000
+#define DISPLAY_DATA_PERIODICITY            400
+#define HEATER_SETTING_PERIODICITY          250
+#define DIAGNOSTICS_PERIODICITY             300
+#define RUNTIME_MEASUREMENTS_PERIODICITY    2000
+
+
 uint32_t task_start_time[MAX_TASKS] = {0};
 uint32_t task_runtime[MAX_TASKS] = {0};
 
@@ -169,7 +177,7 @@ void vControlHeater(void *pvParameters)
                 xSemaphoreGive(xDataMutex);
             }
         }
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(200));
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(CONTROL_HEATER_PERIODICITY));
 
         //UART0_SendString("Control Heater\r\n");
     }
@@ -204,7 +212,7 @@ void vReadTemperatureHandler(void *pvParameters)
         {
             UART0_SendString("Mutex timeout!");
         }
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(2000));
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(READ_TEMP_PERIODICITY));
         //UART0_SendString("Read Temp\r\n");
     }
 }
@@ -229,7 +237,7 @@ void vDisplayDataHandler(void *pvParameters)
         //UART0_SendString("Task time: ");
         //UART0_SendInteger(end_time - start_time);
         //UART0_SendString("\r\n");
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(600));
+        vTaskDelayUntil(&xLastWakeTime, DISPLAY_DATA_PERIODICITY);
 
     }
 
@@ -256,7 +264,7 @@ void vHeaterSettingHandler(void *pvParameters)
             xSemaphoreGive(xDataMutex);
         }
         //UART0_SendString("Heater Setting\r\n");
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1000));
+        vTaskDelayUntil(&xLastWakeTime, HEATER_SETTING_PERIODICITY);
 
     }
 }
@@ -270,7 +278,6 @@ void vDiagnostics(void *pvParameters)
         UART0_SendString("Diagnostics\r");
         if(xSemaphoreTake(xDataMutex, portMAX_DELAY) == pdTRUE)
         {
-            char str[6];
             UART0_SendString("Last Heater Level = ");
             switch(Desired_Heater_Lvl)
             {
@@ -294,7 +301,7 @@ void vDiagnostics(void *pvParameters)
             }
             UART0_SendString("\r\n");
         }
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(300));
+        vTaskDelayUntil(&xLastWakeTime, DIAGNOSTICS_PERIODICITY);
 
      }
 }
@@ -306,7 +313,7 @@ void vRuntimeMeasurements(void *pvParameters)
     for(;;)
     {
         UART0_SendString("Runtime\r\n");
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1000));
+        vTaskDelayUntil(&xLastWakeTime, RUNTIME_MEASUREMENTS_PERIODICITY);
 
     }
 }
