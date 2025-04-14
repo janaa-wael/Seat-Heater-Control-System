@@ -15,11 +15,11 @@
 extern uint32_t get_timestamp_us(void);
 #define MAX_TASKS                           6
 #define CONTROL_HEATER_PERIODICITY          200
-#define READ_TEMP_PERIODICITY               1000
+#define READ_TEMP_PERIODICITY               100
 #define DISPLAY_DATA_PERIODICITY            400
 #define HEATER_SETTING_PERIODICITY          250
 #define DIAGNOSTICS_PERIODICITY             300
-#define RUNTIME_MEASUREMENTS_PERIODICITY    2000
+#define RUNTIME_MEASUREMENTS_PERIODICITY    500
 
 
 uint32_t task_start_time[MAX_TASKS] = {0};
@@ -27,7 +27,22 @@ uint32_t task_runtime[MAX_TASKS] = {0};
 
 extern void* pxCurrentTCB;
 
+uint32 ullTasksOutTime[MAX_TASKS];
+uint32 ullTasksInTime[MAX_TASKS];
+uint32 ullTasksTotalTime[MAX_TASKS];
 
+#define traceTASK_SWITCHED_IN() \
+do { \
+    uint32 taskInTag = (uint32)(pxCurrentTCB->pxTaskTag); \
+    ullTasksInTime[taskInTag] = GPTM_xTimerRead(); \
+} while(0);
+
+#define traceTASK_SWITCHED_OUT() \
+do { \
+    uint32 taskOutTag = (uint32)(pxCurrentTCB->pxTaskTag); \
+    ullTasksOutTime[taskOutTag] = GPTM_xTimerRead(); \
+    ullTasksTotalTime[taskOutTag] += ullTasksOutTime[taskOutTag] - ullTasksInTime[taskOutTag]; \
+} while(0);
 
 /* The HW setup function */
 static void prvSetupHardware( void );
@@ -50,9 +65,9 @@ void vDiagnostics(void *pvParameters);
 void vRuntimeMeasurements(void *pvParameters);
 
 
-uint32 ullTasksOutTime[4];
-uint32 ullTasksInTime[4];
-uint32 ullTasksExecutionTime[4];
+uint32 ullTasksOutTime[MAX_TASKS];
+uint32 ullTasksInTime[MAX_TASKS];
+uint32 ullTasksExecutionTime[MAX_TASKS];
 
 /* FreeRTOS Mutexes */
 xSemaphoreHandle xBtnSemaphore;
@@ -223,7 +238,7 @@ void vDisplayDataHandler(void *pvParameters)
     TickType_t xLastWakeTime = xTaskGetTickCount();
     for(;;)
     {
-        //uint32 start_time = GPTM_WTimer0Read();
+       //uint32 start_time = GPTM_WTimer0Read();
         UART0_SendString("Display\r\n");
 
         UART0_SendString("\r\nTemperature:");
@@ -309,12 +324,24 @@ void vDiagnostics(void *pvParameters)
 void vRuntimeMeasurements(void *pvParameters)
 {
     TickType_t xLastWakeTime = xTaskGetTickCount();
-
-    for(;;)
+    for (;;)
     {
-        UART0_SendString("Runtime\r\n");
+        uint8 ucCounter, ucCPU_Load;
+        uint32 ullTotalTasksTime = 0;
         vTaskDelayUntil(&xLastWakeTime, RUNTIME_MEASUREMENTS_PERIODICITY);
+        for(ucCounter = 1; ucCounter < MAX_TASKS; ucCounter++)
+        {
+            ullTotalTasksTime += ullTasksTotalTime[ucCounter];
+        }
+        ucCPU_Load = (ullTotalTasksTime * 100) /  GPTM_WTimer0Read();
 
+        taskENTER_CRITICAL();
+        UART0_SendString("CPU Load is ");
+        UART0_SendInteger(ucCPU_Load);
+        UART0_SendString("Task 2: ");
+        UART0_SendInteger(ullTasksTotalTime[5]);
+        UART0_SendString("% \r\n");
+        taskEXIT_CRITICAL();
     }
 }
 
