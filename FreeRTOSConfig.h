@@ -59,6 +59,8 @@
  * section. */
 #define configTOTAL_HEAP_SIZE                 ((size_t)(4096*2))
 
+
+#define configUSE_APPLICATION_TASK_TAG         1
 /******************************************************************************/
 /* Hook and callback function related definitions. ****************************/
 /******************************************************************************/

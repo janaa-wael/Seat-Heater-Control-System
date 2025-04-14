@@ -12,6 +12,15 @@
 
 #include <string.h>
 
+extern uint32_t get_timestamp_us(void);
+#define MAX_TASKS 5
+uint32_t task_start_time[MAX_TASKS] = {0};
+uint32_t task_runtime[MAX_TASKS] = {0};
+
+extern void* pxCurrentTCB;
+
+
+
 /* The HW setup function */
 static void prvSetupHardware( void );
 
@@ -30,6 +39,12 @@ void vReadTemperatureHandler(void *pvParameters);
 void vDisplayDataHandler(void *pvParameters);
 void vHeaterSettingHandler(void *pvParameters);
 void vDiagnostics(void *pvParameters);
+void vRuntimeMeasurements(void *pvParameters);
+
+
+uint32 ullTasksOutTime[4];
+uint32 ullTasksInTime[4];
+uint32 ullTasksExecutionTime[4];
 
 /* FreeRTOS Mutexes */
 xSemaphoreHandle xBtnSemaphore;
@@ -43,6 +58,12 @@ sint32 Last_Failure_Timestamp = -1;
 sint32 Last_HeatLvl_Timestamp = -1;
 Lvl Desired_Heater_Lvl = OFF;
 
+TaskHandle_t xTask1Handle;
+TaskHandle_t xTask2Handle;
+TaskHandle_t xTask3Handle;
+TaskHandle_t xTask4Handle;
+TaskHandle_t xTask5Handle;
+TaskHandle_t xTask6Handle;
 
 int main()
 {
@@ -63,11 +84,20 @@ int main()
     }
 
     /* Create Tasks here */
-    xTaskCreate(vControlHeater, "Task 1", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-    xTaskCreate(vReadTemperatureHandler, "Task 2", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
-    xTaskCreate(vDisplayDataHandler, "Task 3", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-    xTaskCreate(vHeaterSettingHandler, "Task 4", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
-    xTaskCreate(vDiagnostics, "Task 5", configMINIMAL_STACK_SIZE, NULL, 4, NULL);
+    xTaskCreate(vControlHeater, "Task 1", configMINIMAL_STACK_SIZE, NULL, 2, &xTask1Handle);
+    xTaskCreate(vReadTemperatureHandler, "Task 2", configMINIMAL_STACK_SIZE, NULL, 3, &xTask2Handle);
+    xTaskCreate(vDisplayDataHandler, "Task 3", configMINIMAL_STACK_SIZE, NULL, 1, &xTask3Handle);
+    xTaskCreate(vHeaterSettingHandler, "Task 4", configMINIMAL_STACK_SIZE, NULL, 3, &xTask4Handle);
+    xTaskCreate(vDiagnostics, "Task 5", configMINIMAL_STACK_SIZE, NULL, 4, &xTask5Handle);
+    xTaskCreate(vRuntimeMeasurements, "Task 6", configMINIMAL_STACK_SIZE, NULL, 2, &xTask6Handle);
+
+
+    vTaskSetApplicationTaskTag( xTask1Handle, ( TaskHookFunction_t ) 1 );
+    vTaskSetApplicationTaskTag( xTask2Handle, ( TaskHookFunction_t ) 2 );
+    vTaskSetApplicationTaskTag( xTask3Handle, ( TaskHookFunction_t ) 3 );
+    vTaskSetApplicationTaskTag( xTask4Handle, ( TaskHookFunction_t ) 4 );
+    vTaskSetApplicationTaskTag( xTask5Handle, ( TaskHookFunction_t ) 5 );
+    vTaskSetApplicationTaskTag( xTask6Handle, ( TaskHookFunction_t ) 6 );
 
     vTaskStartScheduler();
 
@@ -139,7 +169,8 @@ void vControlHeater(void *pvParameters)
                 xSemaphoreGive(xDataMutex);
             }
         }
-        vTaskDelay( pdMS_TO_TICKS(200));
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(200));
+
         //UART0_SendString("Control Heater\r\n");
     }
 }
@@ -149,7 +180,6 @@ void vControlHeater(void *pvParameters)
 void vReadTemperatureHandler(void *pvParameters)
 {
     TickType_t xLastWakeTime = xTaskGetTickCount();
-
     for(;;)
     {
         if(xSemaphoreTake(xDataMutex,  portMAX_DELAY) == pdTRUE)
@@ -182,10 +212,10 @@ void vReadTemperatureHandler(void *pvParameters)
 //every 1 second
 void vDisplayDataHandler(void *pvParameters)
 {
-    TickType_t ticks = pdMS_TO_TICKS(600);
+    TickType_t xLastWakeTime = xTaskGetTickCount();
     for(;;)
     {
-
+        //uint32 start_time = GPTM_WTimer0Read();
         UART0_SendString("Display\r\n");
 
         UART0_SendString("\r\nTemperature:");
@@ -195,14 +225,19 @@ void vDisplayDataHandler(void *pvParameters)
         UART0_SendString("\r\nHeater Status:");
         UART0_SendString(Heater_Status);
         UART0_SendString("\r\n");
-        vTaskDelay(ticks);
+        //uint32_t end_time = GPTM_WTimer0Read();
+        //UART0_SendString("Task time: ");
+        //UART0_SendInteger(end_time - start_time);
+        //UART0_SendString("\r\n");
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(600));
 
     }
+
 }
 
 void vHeaterSettingHandler(void *pvParameters)
 {
-    TickType_t ticks = pdMS_TO_TICKS(1000);
+    TickType_t xLastWakeTime = xTaskGetTickCount();
     for(;;)
     {
         if(xSemaphoreTake(xDataMutex, portMAX_DELAY) == pdTRUE)
@@ -221,16 +256,17 @@ void vHeaterSettingHandler(void *pvParameters)
             xSemaphoreGive(xDataMutex);
         }
         //UART0_SendString("Heater Setting\r\n");
-        vTaskDelay(ticks);
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1000));
+
     }
 }
 
 void vDiagnostics(void *pvParameters)
 {
-    TickType_t ticks = pdMS_TO_TICKS(300);
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+
     for(;;)
     {
-
         UART0_SendString("Diagnostics\r");
         if(xSemaphoreTake(xDataMutex, portMAX_DELAY) == pdTRUE)
         {
@@ -258,9 +294,23 @@ void vDiagnostics(void *pvParameters)
             }
             UART0_SendString("\r\n");
         }
-        vTaskDelay(ticks);
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(300));
+
      }
 }
+
+void vRuntimeMeasurements(void *pvParameters)
+{
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+
+    for(;;)
+    {
+        UART0_SendString("Runtime\r\n");
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1000));
+
+    }
+}
+
 void  GPIOPortF_Handler(void)
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
