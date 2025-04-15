@@ -51,15 +51,15 @@ void PassengerSeatLEDs_Init(void) {
 
     /* Unlock Port E (if needed, though PE0-PE2 are not locked by default) */
     GPIO_PORTE_LOCK_REG = 0x4C4F434B;     // Unlock GPIO Port E
-    GPIO_PORTE_CR_REG |= (1 << 0) | (1 << 1) | (1 << 2);  // Allow changes to PE0-PE2
+    GPIO_PORTE_CR_REG |= (1 << 0) | (1 << 4) | (1 << 5);  // Allow changes to PE0-PE2
 
     /* Configure pins */
-    GPIO_PORTE_AMSEL_REG &= ~((1 << 0) | (1 << 1) | (1 << 2));  // Disable analog
+    GPIO_PORTE_AMSEL_REG &= ~((1 << 0) | (1 << 4) | (1 << 5));  // Disable analog
     GPIO_PORTE_PCTL_REG &= ~(0x00000FFF);  // Clear PMCx bits for PE0-PE2 (GPIO mode)
-    GPIO_PORTE_DIR_REG |= (1 << 0) | (1 << 1) | (1 << 2);  // PE0-PE2 as outputs
-    GPIO_PORTE_AFSEL_REG &= ~((1 << 0) | (1 << 1) | (1 << 2));  // Disable alt functions
-    GPIO_PORTE_DEN_REG |= (1 << 0) | (1 << 1) | (1 << 2);  // Digital enable
-    GPIO_PORTE_DATA_REG &= ~((1 << 0) | (1 << 1) | (1 << 2));  // Turn off LEDs initially
+    GPIO_PORTE_DIR_REG |= (1 << 0) | (1 << 4) | (1 << 5);  // PE0-PE2 as outputs
+    GPIO_PORTE_AFSEL_REG &= ~((1 << 0) | (1 << 4) | (1 << 5));  // Disable alt functions
+    GPIO_PORTE_DEN_REG |= (1 << 0) | (1 << 4) | (1 << 5);  // Digital enable
+    GPIO_PORTE_DATA_REG &= ~((1 << 0) | (1 << 4) | (1 << 5));  // Turn off LEDs initially
 }
 
 void GPIO_RedLedOn(void)
@@ -69,7 +69,7 @@ void GPIO_RedLedOn(void)
 
 void GPIO_Red2LedOn(void)
 {
-    GPIO_PORTE_DATA_REG |= (1<<1);  /* Red LED ON */
+    GPIO_PORTE_DATA_REG |= (1<<5);  /* Red LED ON */
 }
 
 void GPIO_BlueLedOn(void)
@@ -90,7 +90,7 @@ void GPIO_GreenLedOn(void)
 
 void GPIO_Green2LedOn(void)
 {
-    GPIO_PORTE_DATA_REG |= (1<<2);  /* Green LED ON */
+    GPIO_PORTE_DATA_REG |= (1<<4);  /* Green LED ON */
 }
 
 void GPIO_RedLedOff(void)
@@ -100,7 +100,7 @@ void GPIO_RedLedOff(void)
 
 void GPIO_Red2LedOff(void)
 {
-    GPIO_PORTE_DATA_REG &= ~(1<<1);  /* Red LED OFF */
+    GPIO_PORTE_DATA_REG &= ~(1<<5);  /* Red LED OFF */
 }
 
 void GPIO_BlueLedOff(void)
@@ -120,7 +120,7 @@ void GPIO_GreenLedOff(void)
 
 void GPIO_Green2LedOff(void)
 {
-    GPIO_PORTE_DATA_REG &= ~(1<<2);  /* Green LED OFF */
+    GPIO_PORTE_DATA_REG &= ~(1<<4);  /* Green LED OFF */
 }
 
 void GPIO_LedsOff(void)
@@ -149,7 +149,7 @@ void GPIO_BlueLedToggle(void)
 
 void GPIO_GreenLedToggle(void)
 {
-    GPIO_PORTF_DATA_REG ^= (1<<3);  /* Green LED is toggled */
+    GPIO_PORTF_DATA_REG ^= (1<<4);  /* Green LED is toggled */
 }
 
 uint8 GPIO_SW1GetState(void)

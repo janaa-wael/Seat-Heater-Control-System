@@ -34,6 +34,7 @@ uint32 ullTasksTotalTime[MAX_TASKS] = {0};
 
 void(*(arr_BlueLedOn[2]))(void) = {GPIO_BlueLedOn, GPIO_Blue2LedOn};
 void(*(arr_RedLedOn[2]))(void) =  {GPIO_RedLedOn, GPIO_Red2LedOn};
+void(*(arr_RedLedOff[2]))(void) =  {GPIO_RedLedOff, GPIO_Red2LedOff};
 void(*(arr_GreenLedOn[2]))(void) = {GPIO_GreenLedOn, GPIO_Green2LedOn};
 void(*(arr_LedsOff[2]))(void) = {GPIO_LedsOff, GPIO_Leds2Off};
 
@@ -83,7 +84,7 @@ xSemaphoreHandle xGPTM_Mutex;
 xSemaphoreHandle xUART_Mutex;
 xSemaphoreHandle xSystemFailureSemaphore[2];
 
-uint8 Temperature[2] = {22, 22};
+uint8 Temperature[2] = {22, 2};
 uint8 Heater_Status[2][4] = {"OFF", "OFF"};
 sint32 Last_Failure_Timestamp[2] = {-1, -1};
 sint32 Last_HeatLvl_Timestamp[2] = {-1, -1};
@@ -134,7 +135,8 @@ int main()
     xTaskCreate(vControlHeater, "Task 1", configMINIMAL_STACK_SIZE, (void*)DRIVER_SEAT, 2, &xTask1Handle);
     xTaskCreate(vControlHeater, "Task 1", configMINIMAL_STACK_SIZE, (void*)PASSENGER_SEAT, 2, &xTask7Handle);
 
-    //xTaskCreate(vReadTemperatureHandler, "Task 2", configMINIMAL_STACK_SIZE, NULL, 3, &xTask2Handle);
+    xTaskCreate(vReadTemperatureHandler, "Task 2", configMINIMAL_STACK_SIZE, (void*)DRIVER_SEAT, 3, &xTask2Handle);
+    xTaskCreate(vReadTemperatureHandler, "Task 2", configMINIMAL_STACK_SIZE, (void*)PASSENGER_SEAT, 3, &xTask2Handle);
 
     xTaskCreate(vDisplayDataHandler, "Task 3", configMINIMAL_STACK_SIZE, (void*)DRIVER_SEAT, 1, &xTask3Handle);
     xTaskCreate(vDisplayDataHandler, "Task 3", configMINIMAL_STACK_SIZE, (void*)PASSENGER_SEAT, 1, &xTask8Handle);
@@ -156,7 +158,7 @@ int main()
     vTaskStartScheduler();
 
     /* Should never reach here!  If you do then there was not enough heap
-	available for the idle task to be created. */
+    available for the idle task to be created. */
     for (;;);
 
 }
@@ -249,31 +251,31 @@ void vReadTemperatureHandler(void *pvParameters)
         if(xSemaphoreTake(xTempMutex[seat_id],  portMAX_DELAY) == pdTRUE)
         {
 
-            Temperature[seat_id] = ADC_readValue();
+            Temperature[seat_id] = ADC_readValue(seat_id);
             if(Temperature[seat_id] < 4 || Temperature[seat_id] > 45)
             {
-                GPIO_LedsOff();
-                GPIO_RedLedOn();
+                arr_LedsOff[seat_id]();
+                arr_RedLedOn[seat_id]();
                 //UART0_SendString("Heater Turned Off!\r\nInvalid Temp Range\r\n");
                 if(xSemaphoreTake(xLastFailureMutex[seat_id], portMAX_DELAY) == pdTRUE)
                 {
                     Last_Failure_Timestamp[seat_id] = GPTM_WTimer0Read();
-
+                    xSemaphoreGive(xLastFailureMutex[seat_id]);
                 }
                 xSemaphoreGive(xSystemFailureSemaphore[seat_id]);
             }
             else
             {
-                GPIO_RedLedOff();
+                arr_RedLedOff[seat_id]();
             }
-            xSemaphoreGive(xTempMutex[0]);
+            xSemaphoreGive(xTempMutex[seat_id]);
         }
         else
         {
             UART0_SendString("Mutex timeout!");
         }
         vTaskDelayUntil(&xLastWakeTime, READ_TEMP_PERIODICITY);
-        //UART0_SendString("Read Temp\r\n");
+        UART0_SendString("Read Temp\r\n");
     }
 }
 
@@ -461,4 +463,3 @@ void  GPIOPortF_Handler(void)
 
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
-

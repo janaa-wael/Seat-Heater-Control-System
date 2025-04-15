@@ -92,7 +92,7 @@ void ADC_init(void);
 
 
 /*Function to start and end conversion of adc value*/
-uint32 ADC_readValue(void);
+uint32 ADC_readValue(int channel);
 
 
 #endif /* MCAL_ADC_ADC_H_ */
