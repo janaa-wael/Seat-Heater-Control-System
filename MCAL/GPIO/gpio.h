@@ -23,20 +23,31 @@
 #define RELEASED               ((uint8)0x01)
 
 void GPIO_BuiltinButtonsLedsInit(void);
+void PassengerSeatLEDs_Init(void) ;
 
 void GPIO_RedLedOn(void);
 void GPIO_BlueLedOn(void);
 void GPIO_GreenLedOn(void);
+void GPIO_WhiteLedOn(void);
+
+void GPIO_Red2LedOn(void);
+void GPIO_Blue2LedOn(void);
+void GPIO_Green2LedOn(void);
 
 void GPIO_RedLedOff(void);
 void GPIO_BlueLedOff(void);
 void GPIO_GreenLedOff(void);
+
+void GPIO_Red2LedOff(void);
+void GPIO_Blue2LedOff(void);
+void GPIO_Green2LedOff(void);
 
 void GPIO_RedLedToggle(void);
 void GPIO_BlueLedToggle(void);
 void GPIO_GreenLedToggle(void);
 
 void GPIO_LedsOff(void);
+void GPIO_Leds2Off(void);
 
 uint8 GPIO_SW1GetState(void);
 uint8 GPIO_SW2GetState(void);
