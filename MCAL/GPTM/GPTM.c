@@ -28,3 +28,12 @@ uint32 GPTM_WTimer0Read(void)
     return (uint32) (0xFFFFFFFFUL - WTIMER0_TAR_REG);
 }
 
+
+/**
+ * @brief Resets WTimer0 (clears counter and reloads initial value).
+ */
+void GPTM_WTimer0Reset(void) {
+    WTIMER0_CTL_REG &= ~(0x01);       // Disable WTimer0A (clear TAEN bit)
+    WTIMER0_TAILR_REG = 0xFFFFFFFF;   // Reset counter to max value (32-bit)
+    WTIMER0_CTL_REG |= 0x01;          // Re-enable WTimer0A (set TAEN bit)
+}

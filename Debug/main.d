@@ -16,6 +16,7 @@ main.obj: D:/Program\ Files/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/sys
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOSConfig.h
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/GPTM/GPTM.h
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/Common/std_types.h
+main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/UART/uart0.h
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/projdefs.h
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/portable.h
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/deprecated_definitions.h
@@ -25,7 +26,6 @@ main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/inclu
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/list.h
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/semphr.h
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/queue.h
-main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/UART/uart0.h
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/GPIO/gpio.h
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/tm4c123gh6pm_registers.h
 main.obj: D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/ADC/adc.h
@@ -64,6 +64,8 @@ D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/GPTM/GPTM.h:
 
 D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/Common/std_types.h:
 
+D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/UART/uart0.h:
+
 D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/projdefs.h:
 
 D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/portable.h:
@@ -81,8 +83,6 @@ D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/list.h:
 D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/semphr.h:
 
 D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/FreeRTOS/Source/include/queue.h:
-
-D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/UART/uart0.h:
 
 D:/Courses/Advanced\ Diploma/RTOS/Workspace/Lab4/MCAL/GPIO/gpio.h:
 

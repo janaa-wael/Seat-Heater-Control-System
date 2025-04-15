@@ -17,6 +17,6 @@
 
 void GPTM_WTimer0Init(void);
 uint32 GPTM_WTimer0Read(void);
-
+void GPTM_WTimer0Reset(void);
 
 #endif /* GPTM_H_ */

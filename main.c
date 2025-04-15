@@ -19,16 +19,17 @@
 #define DISPLAY_DATA_PERIODICITY            20U
 #define HEATER_SETTING_PERIODICITY          25U
 #define DIAGNOSTICS_PERIODICITY             30U
-#define RUNTIME_MEASUREMENTS_PERIODICITY    80U
+#define RUNTIME_MEASUREMENTS_PERIODICITY    180U
+
 
 
 uint32_t task_start_time[MAX_TASKS] = {0};
 uint32_t task_runtime[MAX_TASKS] = {0};
 
 
-uint32 ullTasksOutTime[MAX_TASKS];
-uint32 ullTasksInTime[MAX_TASKS];
-uint32 ullTasksTotalTime[MAX_TASKS];
+uint32 ullTasksOutTime[MAX_TASKS] = {0};
+uint32 ullTasksInTime[MAX_TASKS] = {0};
+uint32 ullTasksTotalTime[MAX_TASKS] = {0};
 
 
 
@@ -187,7 +188,6 @@ void vControlHeater(void *pvParameters)
 }
 
 
-//every 2 seconds
 void vReadTemperatureHandler(void *pvParameters)
 {
     TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -316,6 +316,7 @@ void vRuntimeMeasurements(void *pvParameters)
     {
         uint8 ucCounter, ucCPU_Load;
         uint32 ullTotalTasksTime = 0;
+        //GPTM_WTimer0Reset();
         vTaskDelayUntil(&xLastWakeTime, RUNTIME_MEASUREMENTS_PERIODICITY);
         for(ucCounter = 1; ucCounter < 7; ucCounter++)
         {
@@ -326,9 +327,22 @@ void vRuntimeMeasurements(void *pvParameters)
         taskENTER_CRITICAL();
         UART0_SendString("CPU Load is ");
         UART0_SendInteger(ucCPU_Load);
+        UART0_SendString("% \r\n");
+        UART0_SendString("\r\nTASKS EXECUTION TIMES");
+        UART0_SendString("\r\n~~~~~~~~~~~~~~~~~~~~~\r\n");
+        for(ucCounter = 1; ucCounter < MAX_TASKS; ucCounter++)
+        {
+            UART0_SendString("Task ");
+            UART0_SendInteger(ucCounter);
+            UART0_SendString(": ");
+            UART0_SendInteger(ullTasksTotalTime[ucCounter]);
+            UART0_SendString(" ticks\r\n");
+        }
+        UART0_SendString("~~~~~~~~~~~~~~~~~~~~~");
+
         //UART0_SendString("Task 1: ");
         //UART0_SendInteger(ullTasksTotalTime[1]);
-        UART0_SendString("% \r\n");
+
         taskEXIT_CRITICAL();
     }
 }

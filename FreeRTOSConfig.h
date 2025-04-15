@@ -19,6 +19,7 @@
 #define FREERTOS_CONFIG_H
 
 #include "GPTM.h"
+#include "uart0.h"
 #include "std_types.h"
 /******************************************************************************/
 /* Scheduling behavior related definitions. **********************************/
@@ -156,6 +157,7 @@ do{                                                                             
     ullTasksOutTime[taskOutTag] = GPTM_WTimer0Read();                                            \
     ullTasksTotalTime[taskOutTag] += ullTasksOutTime[taskOutTag] - ullTasksInTime[taskOutTag];   \
 }while(0);
+
 
 
 /* Normal assert() semantics without relying on the provision of an assert.h header file. */
