@@ -37,6 +37,7 @@ typedef signed long long      sint64;         /* -9223372036854775808 .. 9223372
 typedef float                 float32;
 typedef double                float64;
 
+
 /* Boolean Data Type */
 typedef uint8 boolean;
 

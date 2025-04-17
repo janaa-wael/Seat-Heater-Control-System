@@ -1476,7 +1476,7 @@ BaseType_t xQueueReceive( QueueHandle_t xQueue,
              * the task on the list of tasks waiting to receive from the queue. */
             if( prvIsQueueEmpty( pxQueue ) != pdFALSE )
             {
-                traceBLOCKING_ON_QUEUE_RECEIVE( pxQueue );
+                traceBLOCKING_ON_QUEUE_RECEIVE(pxQueue);
                 vTaskPlaceOnEventList( &( pxQueue->xTasksWaitingToReceive ), xTicksToWait );
                 prvUnlockQueue( pxQueue );
 

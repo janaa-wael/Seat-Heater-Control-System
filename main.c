@@ -12,14 +12,15 @@
 
 #include <string.h>
 
-#define MAX_TASKS                           7
+#define MAX_TASKS                           12
+#define MAX_MUTEXES                         12
 
-#define CONTROL_HEATER_PERIODICITY          10U
-#define READ_TEMP_PERIODICITY               80U
-#define DISPLAY_DATA_PERIODICITY            200U
-#define HEATER_SETTING_PERIODICITY          25U
-#define DIAGNOSTICS_PERIODICITY             30U
-#define RUNTIME_MEASUREMENTS_PERIODICITY    180U
+#define CONTROL_HEATER_PERIODICITY          300U
+#define READ_TEMP_PERIODICITY               800U
+#define DISPLAY_DATA_PERIODICITY            1000U
+#define HEATER_SETTING_PERIODICITY          100U
+#define DIAGNOSTICS_PERIODICITY             400U
+#define RUNTIME_MEASUREMENTS_PERIODICITY    2000U
 
 #define DRIVER_SEAT          0
 #define PASSENGER_SEAT       1
@@ -28,9 +29,7 @@ uint32_t task_start_time[MAX_TASKS] = {0};
 uint32_t task_runtime[MAX_TASKS] = {0};
 
 
-uint32 ullTasksOutTime[MAX_TASKS] = {0};
-uint32 ullTasksInTime[MAX_TASKS] = {0};
-uint32 ullTasksTotalTime[MAX_TASKS] = {0};
+
 
 void(*(arr_BlueLedOn[2]))(void) = {GPIO_BlueLedOn, GPIO_Blue2LedOn};
 void(*(arr_RedLedOn[2]))(void) =  {GPIO_RedLedOn, GPIO_Red2LedOn};
@@ -60,6 +59,7 @@ typedef struct{
     HeatingLevelRecord last_heating_lvl;
 }SeatDiagnosticsData;
 
+
 /* FreeRTOS tasks */
 void vControlHeater(void *pvParameters);
 void vReadTemperatureHandler(void *pvParameters);
@@ -73,6 +73,7 @@ uint32 ullTasksOutTime[MAX_TASKS];
 uint32 ullTasksInTime[MAX_TASKS];
 uint32 ullTasksExecutionTime[MAX_TASKS];
 
+
 /* FreeRTOS Mutexes */
 xSemaphoreHandle xBtnSemaphore[2];
 //xSemaphoreHandle xDataMutex[2];
@@ -80,12 +81,47 @@ xSemaphoreHandle xTempMutex[2];
 xSemaphoreHandle xDesiredHeaterLvlMutex[2];
 xSemaphoreHandle xHeaterStatusMutex[2];
 xSemaphoreHandle xLastFailureMutex[2];
-xSemaphoreHandle xGPTM_Mutex;
+xSemaphoreHandle xLastHeatLvlMutex[2];
 xSemaphoreHandle xUART_Mutex;
 xSemaphoreHandle xSystemFailureSemaphore[2];
 
+
+
+#define MAX_MUTEXES         11  // Adjust based on your needs
+
+
+
+MutexStats mutexStats[MAX_MUTEXES] = {0};
+
+void RegisterMutex(void* xMutex, const char *pcName)
+{
+    int i ;
+    for (i = 0; i < MAX_MUTEXES; i++) {
+        if (mutexStats[i].mutex == NULL) {
+            mutexStats[i].mutex = xMutex;
+            mutexStats[i].name = pcName;
+            vQueueAddToRegistry((QueueHandle_t)xMutex, pcName);  // For debugging
+            break;
+        }
+    }
+}
+
+sint8 getMutexIndex(void *xMutex)
+{
+    int i;
+    for(i = 0; i < MAX_MUTEXES; i++)
+    {
+        if(mutexStats[i].mutex == xMutex)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+
 uint8 Temperature[2] = {22, 2};
-uint8 Heater_Status[2][4] = {"OFF", "OFF"};
+uint8 Heater_Status[2][7] = {"OFF", "OFF"};
 sint32 Last_Failure_Timestamp[2] = {-1, -1};
 sint32 Last_HeatLvl_Timestamp[2] = {-1, -1};
 
@@ -101,6 +137,8 @@ TaskHandle_t xTask6Handle;
 TaskHandle_t xTask7Handle;
 TaskHandle_t xTask8Handle;
 TaskHandle_t xTask9Handle;
+TaskHandle_t xTask10Handle;
+TaskHandle_t xTask11Handle;
 
 int main()
 {
@@ -111,7 +149,6 @@ int main()
     xBtnSemaphore[0] = xSemaphoreCreateBinary();
     xBtnSemaphore[1] = xSemaphoreCreateBinary();
     //xDataMutex = xSemaphoreCreateMutex();
-    xGPTM_Mutex = xSemaphoreCreateMutex();
     xDesiredHeaterLvlMutex[0] = xSemaphoreCreateMutex();
     xDesiredHeaterLvlMutex[1] = xSemaphoreCreateMutex();
     xTempMutex[0] = xSemaphoreCreateMutex();
@@ -120,10 +157,23 @@ int main()
     xHeaterStatusMutex[1] = xSemaphoreCreateMutex();
     xLastFailureMutex[0] = xSemaphoreCreateMutex();
     xLastFailureMutex[1] = xSemaphoreCreateMutex();
+    xLastHeatLvlMutex[0] = xSemaphoreCreateMutex();
+    xLastHeatLvlMutex[1] = xSemaphoreCreateMutex();
     xUART_Mutex = xSemaphoreCreateMutex();
     xSystemFailureSemaphore[0] = xSemaphoreCreateBinary();
     xSystemFailureSemaphore[1] = xSemaphoreCreateBinary();
 
+    RegisterMutex(xUART_Mutex, "UART_Mutex");
+    RegisterMutex(xTempMutex[0], "Driver Temp Mutex");
+    RegisterMutex(xTempMutex[1], "Passenger Temp Mutex");
+    RegisterMutex(xDesiredHeaterLvlMutex[0], "Driver Desired Heating Lvl Mutex");
+    RegisterMutex(xDesiredHeaterLvlMutex[1], "Passenger Desired Heating Lvl Mutex");
+    RegisterMutex(xLastHeatLvlMutex[0], "Driver Last Heating Lvl Mutex");
+    RegisterMutex(xLastHeatLvlMutex[1], "Passenger Last Heating Lvl Mutex");
+    RegisterMutex(xHeaterStatusMutex[0], "Driver Heater Status Mutex");
+    RegisterMutex(xHeaterStatusMutex[1], "Passenger Heater Status Mutex");
+    RegisterMutex(xLastFailureMutex[0], "Driver Last Failure Mutex");
+    RegisterMutex(xLastFailureMutex[1], "Passenger Last Failure Mutex");
 
     if (xBtnSemaphore[0] == NULL || xBtnSemaphore[1] == NULL || xTempMutex[0] == NULL || xTempMutex[1] == NULL)
     {
@@ -133,27 +183,34 @@ int main()
 
     /* Create Tasks here */
     xTaskCreate(vControlHeater, "Task 1", configMINIMAL_STACK_SIZE, (void*)DRIVER_SEAT, 2, &xTask1Handle);
-    xTaskCreate(vControlHeater, "Task 1", configMINIMAL_STACK_SIZE, (void*)PASSENGER_SEAT, 2, &xTask7Handle);
+    xTaskCreate(vControlHeater, "Task 7", configMINIMAL_STACK_SIZE, (void*)PASSENGER_SEAT, 2, &xTask7Handle);
 
     xTaskCreate(vReadTemperatureHandler, "Task 2", configMINIMAL_STACK_SIZE, (void*)DRIVER_SEAT, 3, &xTask2Handle);
-    xTaskCreate(vReadTemperatureHandler, "Task 2", configMINIMAL_STACK_SIZE, (void*)PASSENGER_SEAT, 3, &xTask2Handle);
+    xTaskCreate(vReadTemperatureHandler, "Task 11", configMINIMAL_STACK_SIZE, (void*)PASSENGER_SEAT, 3, &xTask11Handle);
 
-    xTaskCreate(vDisplayDataHandler, "Task 3", configMINIMAL_STACK_SIZE, (void*)DRIVER_SEAT, 1, &xTask3Handle);
-    xTaskCreate(vDisplayDataHandler, "Task 3", configMINIMAL_STACK_SIZE, (void*)PASSENGER_SEAT, 1, &xTask8Handle);
+    xTaskCreate(vDisplayDataHandler, "Task 3", configMINIMAL_STACK_SIZE, (void*)DRIVER_SEAT, 2, &xTask3Handle);
+    xTaskCreate(vDisplayDataHandler, "Task 8", configMINIMAL_STACK_SIZE, (void*)PASSENGER_SEAT, 2, &xTask8Handle);
 
     xTaskCreate(vHeaterSettingHandler, "Task 4", configMINIMAL_STACK_SIZE, (void*)DRIVER_SEAT, 3, &xTask4Handle);
-    xTaskCreate(vHeaterSettingHandler, "Task 4", configMINIMAL_STACK_SIZE, (void*)PASSENGER_SEAT, 3, &xTask8Handle);
-    //xTaskCreate(vDiagnostics, "Task 5", configMINIMAL_STACK_SIZE, (void*)DRIVER_SEAT, 4, &xTask5Handle);
-    //xTaskCreate(vDiagnostics, "Task 5", configMINIMAL_STACK_SIZE, (void*)PASSENGER_SEAT, 4, &xTask9Handle);
-    //xTaskCreate(vRuntimeMeasurements, "Task 6", configMINIMAL_STACK_SIZE, NULL, 2, &xTask6Handle);
+    xTaskCreate(vHeaterSettingHandler, "Task 9", configMINIMAL_STACK_SIZE, (void*)PASSENGER_SEAT, 3, &xTask9Handle);
+
+    xTaskCreate(vDiagnostics, "Task 5", configMINIMAL_STACK_SIZE, (void*)DRIVER_SEAT, 4, &xTask5Handle);
+    xTaskCreate(vDiagnostics, "Task 10", configMINIMAL_STACK_SIZE, (void*)PASSENGER_SEAT, 4, &xTask10Handle);
+
+    xTaskCreate(vRuntimeMeasurements, "Task 6", configMINIMAL_STACK_SIZE, NULL, 5, &xTask6Handle);
 
 
-    vTaskSetApplicationTaskTag( xTask1Handle, ( TaskHookFunction_t ) 1 );
-    vTaskSetApplicationTaskTag( xTask2Handle, ( TaskHookFunction_t ) 2 );
-    vTaskSetApplicationTaskTag( xTask3Handle, ( TaskHookFunction_t ) 3 );
-    vTaskSetApplicationTaskTag( xTask4Handle, ( TaskHookFunction_t ) 4 );
-    vTaskSetApplicationTaskTag( xTask5Handle, ( TaskHookFunction_t ) 5 );
-    vTaskSetApplicationTaskTag( xTask6Handle, ( TaskHookFunction_t ) 6 );
+    vTaskSetApplicationTaskTag( xTask1Handle,  ( TaskHookFunction_t ) 1 );
+    vTaskSetApplicationTaskTag( xTask2Handle,  ( TaskHookFunction_t ) 2 );
+    vTaskSetApplicationTaskTag( xTask3Handle,  ( TaskHookFunction_t ) 3 );
+    vTaskSetApplicationTaskTag( xTask4Handle,  ( TaskHookFunction_t ) 4 );
+    vTaskSetApplicationTaskTag( xTask5Handle,  ( TaskHookFunction_t ) 5 );
+    vTaskSetApplicationTaskTag( xTask6Handle,  ( TaskHookFunction_t ) 6 );
+    vTaskSetApplicationTaskTag( xTask7Handle,  ( TaskHookFunction_t ) 7 );
+    vTaskSetApplicationTaskTag( xTask8Handle,  ( TaskHookFunction_t ) 8 );
+    vTaskSetApplicationTaskTag( xTask9Handle,  ( TaskHookFunction_t ) 9 );
+    vTaskSetApplicationTaskTag( xTask10Handle, ( TaskHookFunction_t ) 10 );
+    vTaskSetApplicationTaskTag( xTask11Handle, ( TaskHookFunction_t ) 11 );
 
     vTaskStartScheduler();
 
@@ -233,11 +290,7 @@ void vControlHeater(void *pvParameters)
                 xSemaphoreGive(xDesiredHeaterLvlMutex[seat_id]);
             }
         }
-        vTaskDelayUntil(&xLastWakeTime, CONTROL_HEATER_PERIODICITY);
-
-        UART0_SendString("Control Heater\r\n");
-
-
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(CONTROL_HEATER_PERIODICITY));
     }
 }
 
@@ -274,12 +327,11 @@ void vReadTemperatureHandler(void *pvParameters)
         {
             UART0_SendString("Mutex timeout!");
         }
-        vTaskDelayUntil(&xLastWakeTime, READ_TEMP_PERIODICITY);
-        UART0_SendString("Read Temp\r\n");
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(READ_TEMP_PERIODICITY));
+        //UART0_SendString("Read Temp\r\n");
     }
 }
 
-//every 1 second
 void vDisplayDataHandler(void *pvParameters)
 {
     TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -292,16 +344,35 @@ void vDisplayDataHandler(void *pvParameters)
             //uint32 start_time = GPTM_WTimer0Read();
             //UART0_SendString("Display\r\n");
             if(seat_id == DRIVER_SEAT)
-                UART0_SendString("Driver Seat Data:\r\n");
+                UART0_SendString("\r\n\r\nDriver Seat Data:\r\n");
             else
-                UART0_SendString("Passenger Seat Data:\r\n");
+                UART0_SendString("\r\n\r\nPassenger Seat Data:\r\n");
+            UART0_SendString("=====================\r\n");
+            UART0_SendString("Temperature: ");
 
-            UART0_SendString("\r\nTemperature:");
-            UART0_SendInteger(Temperature[seat_id]);
-            UART0_SendString("\r\nDesired Heating Level:");
-            UART0_SendInteger(Desired_Heater_Lvl[seat_id]);
-            UART0_SendString("\r\nHeater Status:");
-            UART0_SendString(Heater_Status[seat_id]);
+            if(xSemaphoreTake(xTempMutex[seat_id], portMAX_DELAY) == pdTRUE)
+            {
+                UART0_SendInteger(Temperature[seat_id]);
+                xSemaphoreGive(xTempMutex[seat_id]);
+            }
+            UART0_SendString("\xB0""C\r\n");
+
+
+            UART0_SendString("Desired Heating Level: ");
+            if(xSemaphoreTake(xDesiredHeaterLvlMutex[seat_id], portMAX_DELAY) == pdTRUE)
+            {
+                UART0_SendInteger(Desired_Heater_Lvl[seat_id]);
+                xSemaphoreGive(xDesiredHeaterLvlMutex[seat_id]);
+            }
+            UART0_SendString("\xB0""C");
+
+            UART0_SendString("\r\nHeater Status: ");
+            if(xSemaphoreTake(xHeaterStatusMutex[seat_id], portMAX_DELAY) == pdTRUE)
+            {
+                UART0_SendString(Heater_Status[seat_id]);
+                xSemaphoreGive(xHeaterStatusMutex[seat_id]);
+            }
+
             UART0_SendString("\r\n");
             //uint32_t end_time = GPTM_WTimer0Read();
             //UART0_SendString("Task time: ");
@@ -310,7 +381,7 @@ void vDisplayDataHandler(void *pvParameters)
             xSemaphoreGive(xUART_Mutex);
         }
 
-        vTaskDelayUntil(&xLastWakeTime, DISPLAY_DATA_PERIODICITY);
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(DISPLAY_DATA_PERIODICITY));
 
     }
 
@@ -333,12 +404,13 @@ void vHeaterSettingHandler(void *pvParameters)
             {
                 if(xSemaphoreTake(xHeaterStatusMutex[seat_id],portMAX_DELAY) == pdTRUE)
                 {
+                    strcpy(Heater_Status[seat_id],"");
                     if(Desired_Heater_Lvl[seat_id] - Temperature[seat_id] >= 10)
-                        strcpy(Heater_Status[seat_id],"ON");
+                        strcpy(Heater_Status[seat_id],"HIGH");
                     else if(Desired_Heater_Lvl[seat_id] - Temperature[seat_id] >= 5)
-                        strcpy(Heater_Status[seat_id],"ON");
+                        strcpy(Heater_Status[seat_id],"MEDIUM");
                     else if(Desired_Heater_Lvl[seat_id] - Temperature[seat_id] >= 2)
-                        strcpy(Heater_Status[seat_id],"ON");
+                        strcpy(Heater_Status[seat_id],"LOW");
                     else if(Temperature[seat_id] - Desired_Heater_Lvl[seat_id] >= 0)
                         strcpy(Heater_Status[seat_id],"OFF");
                     xSemaphoreGive(xHeaterStatusMutex[seat_id]);
@@ -348,7 +420,7 @@ void vHeaterSettingHandler(void *pvParameters)
             xSemaphoreGive(xDesiredHeaterLvlMutex[seat_id]);
         }
         //UART0_SendString("Heater Setting\r\n");
-        vTaskDelayUntil(&xLastWakeTime, HEATER_SETTING_PERIODICITY);
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(HEATER_SETTING_PERIODICITY));
 
     }
 }
@@ -359,7 +431,8 @@ void vDiagnostics(void *pvParameters)
     int seat_id = (int)pvParameters;
     for(;;)
     {
-        //UART0_SendString("\n\rDiagnostics\n\r");
+        //UART0_SendString("\n\rDiagnostics: ");
+        //UART0_SendInteger(seat_id);
 
         //UART0_SendString("Last Heater Level = ");
         /*switch(Desired_Heater_Lvl)
@@ -368,23 +441,35 @@ void vDiagnostics(void *pvParameters)
         case LOW: UART0_SendString("LOW"); break;
         case MEDIUM: UART0_SendString("MEDIUM"); break;
         case HIGH: UART0_SendString("HIGH"); break;
-        }
-        UART0_SendString("\r\n");*/
+        }*/
+        //UART0_SendString("\r\n");
 
-        if(xSemaphoreTake(xSystemFailureSemaphore[seat_id], pdMS_TO_TICKS(100)) == pdTRUE)
+        if(xSemaphoreTake(xSystemFailureSemaphore[seat_id], 0) == pdTRUE)
         {
 
             //UART0_SendString("Failure\r\n");
             //UART0_SendString("Timestamp = ");
-            if(xSemaphoreTake(xGPTM_Mutex, pdMS_TO_TICKS(100)) == pdTRUE)
+            if(xSemaphoreTake(xLastFailureMutex[seat_id], 0) == pdTRUE)
             {
-                Last_Failure_Timestamp[seat_id] = GPTM_WTimer0Read();
-                //UART0_SendInteger(Last_Failure_Timestamp);
-                xSemaphoreGive(xGPTM_Mutex);
+                Seat_Data[seat_id].last_failure.timestamp = Last_Failure_Timestamp;
+                Seat_Data[seat_id].last_failure.failure_code = "Temperature Out Of Range";
+                //UART0_SendString("\r\n");
+                xSemaphoreGive(xLastFailureMutex[seat_id]);
             }
-            //UART0_SendString("\r\n");
+
         }
-        vTaskDelayUntil(&xLastWakeTime, DIAGNOSTICS_PERIODICITY);
+
+        if(xSemaphoreTake(xDesiredHeaterLvlMutex[seat_id], portMAX_DELAY) == pdTRUE)
+        {
+            Seat_Data[seat_id].last_heating_lvl.heating_level = Desired_Heater_Lvl[seat_id];
+            xSemaphoreGive(xDesiredHeaterLvlMutex[seat_id]);
+        }
+        if(xSemaphoreTake(xLastHeatLvlMutex[seat_id], portMAX_DELAY) == pdTRUE)
+        {
+            Seat_Data[seat_id].last_heating_lvl.timestamp = Last_HeatLvl_Timestamp[seat_id];
+            xSemaphoreGive(xLastHeatLvlMutex[seat_id]);
+        }
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(DIAGNOSTICS_PERIODICITY));
 
     }
 }
@@ -392,25 +477,22 @@ void vDiagnostics(void *pvParameters)
 void vRuntimeMeasurements(void *pvParameters)
 {
     TickType_t xLastWakeTime = xTaskGetTickCount();
+    int seat_id = (int)pvParameters;
     for (;;)
     {
         uint8 ucCounter, ucCPU_Load;
-        uint8 str_task_time[20];
         uint32 ullTotalTasksTime = 0;
-        //GPTM_WTimer0Reset();
-        vTaskDelayUntil(&xLastWakeTime, RUNTIME_MEASUREMENTS_PERIODICITY);
-        for(ucCounter = 1; ucCounter < 7; ucCounter++)
+        for(ucCounter = 1; ucCounter < MAX_TASKS; ucCounter++)
         {
             ullTotalTasksTime += ullTasksTotalTime[ucCounter];
         }
         ucCPU_Load = (ullTotalTasksTime * 100) /  GPTM_WTimer0Read();
-
         taskENTER_CRITICAL();
         UART0_SendString("CPU Load is ");
         UART0_SendInteger(ucCPU_Load);
         UART0_SendString("% \r\n");
         UART0_SendString("\r\nTASKS EXECUTION TIMES");
-        UART0_SendString("\r\n~~~~~~~~~~~~~~~~~~~~~\r\n");
+        UART0_SendString("\r\n****************************\r\n");
         for(ucCounter = 1; ucCounter < MAX_TASKS; ucCounter++)
         {
             UART0_SendString("Task ");
@@ -418,18 +500,23 @@ void vRuntimeMeasurements(void *pvParameters)
             UART0_SendString(": ");
             UART0_SendInteger(ullTasksTotalTime[ucCounter]);
             UART0_SendString(" ticks / ");
-            //float task_time_ms = ullTasksTotalTime[ucCounter] / 10.0f;
-            //sprintf(str_task_time, "%.3f", task_time_ms);
-
             UART0_SendInteger(ullTasksTotalTime[ucCounter] / 10);
             UART0_SendString(" ms\r\n");
         }
+        UART0_SendString("****************************\r\n* ");
+
+        for(ucCounter = 0; ucCounter < MAX_MUTEXES; ucCounter++)
+        {
+            UART0_SendString(mutexStats[ucCounter].name);
+            UART0_SendString(": ");
+            UART0_SendInteger(mutexStats[ucCounter].totalLockTime);
+            UART0_SendString(" ticks / ");
+            UART0_SendInteger(mutexStats[ucCounter].totalLockTime/ 10);
+            UART0_SendString(" ms\r\n* ");
+        }
         UART0_SendString("~~~~~~~~~~~~~~~~~~~~~");
-
-        //UART0_SendString("Task 1: ");
-        //UART0_SendInteger(ullTasksTotalTime[1]);
-
         taskEXIT_CRITICAL();
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(RUNTIME_MEASUREMENTS_PERIODICITY));
     }
 }
 
@@ -442,11 +529,13 @@ void  GPIOPortF_Handler(void)
 
         xSemaphoreGiveFromISR(xBtnSemaphore[0], &xHigherPriorityTaskWoken);
         GPIO_PORTF_ICR_REG   |= (1<<4);       /* Clear Trigger flag for PF0 (Interrupt Flag) */
-        if(xSemaphoreTakeFromISR(xGPTM_Mutex, portMAX_DELAY) == pdTRUE)
+
+        if(xSemaphoreTakeFromISR(xLastHeatLvlMutex[0], portMAX_DELAY) == pdTRUE)
         {
             Last_HeatLvl_Timestamp[0] = GPTM_WTimer0Read();
-            xSemaphoreGiveFromISR(xGPTM_Mutex,xHigherPriorityTaskWoken);
+            xSemaphoreGiveFromISR(xLastHeatLvlMutex[0],xHigherPriorityTaskWoken);
         }
+
     }
     if(GPIO_PORTF_RIS_REG & (1<<0))
     {
@@ -454,11 +543,13 @@ void  GPIOPortF_Handler(void)
         //UART0_SendString("SW2 Clicked\r\n");
         xSemaphoreGiveFromISR(xBtnSemaphore[1], &xHigherPriorityTaskWoken);
         GPIO_PORTF_ICR_REG   |= (1<<0);       /* Clear Trigger flag for PF0 (Interrupt Flag) */
-        if(xSemaphoreTakeFromISR(xGPTM_Mutex, portMAX_DELAY) == pdTRUE)
+
+        if(xSemaphoreTakeFromISR(xLastHeatLvlMutex[1], portMAX_DELAY) == pdTRUE)
         {
             Last_HeatLvl_Timestamp[1] = GPTM_WTimer0Read();
-            xSemaphoreGiveFromISR(xGPTM_Mutex,xHigherPriorityTaskWoken);
+            xSemaphoreGiveFromISR(xLastHeatLvlMutex[1],xHigherPriorityTaskWoken);
         }
+
     }
 
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);

@@ -41,7 +41,7 @@
 /* configMAX_PRIORITIES Sets the number of available task priorities.  Tasks can
  * be assigned priorities of 0 to (configMAX_PRIORITIES - 1).  Zero is the lowest
  * priority. */
-#define configMAX_PRIORITIES                  (5)
+#define configMAX_PRIORITIES                  (6)
 
 /* Set configUSE_PREEMPTION to 1 to use pre-emptive scheduling. Set
  * configUSE_PREEMPTION to 0 to use co-operative scheduling. */
@@ -127,10 +127,15 @@ PRIORITY THAN THIS! (higher priorities are lower numeric values. */
  * is set to 1. */
 #define configTIMER_TASK_PRIORITY             (configMAX_PRIORITIES - 1)
 
- /* configTIMER_QUEUE_LENGTH sets the length of the queue (the number of discrete
+#define configQUEUE_REGISTRY_SIZE 10
+
+
+#define configUSE_TRACE_FACILITY           1   // Enable trace facility (required)
+#define configUSE_MUTEXES                  1   // Enable mutexes (if using mutexes)
+/* configTIMER_QUEUE_LENGTH sets the length of the queue (the number of discrete
  * items the queue can hold) used to send commands to the timer task. Only used
  * if configUSE_TIMERS is set to 1. */
-#define configTIMER_QUEUE_LENGTH              10
+#define configTIMER_QUEUE_LENGTH              11
 
 /* configTIMER_TASK_STACK_DEPTH sets the size of the stack allocated to the
  * timer task (in words, not in bytes!).  The timer task is a standard FreeRTOS
@@ -140,26 +145,100 @@ PRIORITY THAN THIS! (higher priorities are lower numeric values. */
 /******************************************************************************/
 /* Debugging assistance. ******************************************************/
 /******************************************************************************/
+extern void vTraceMutexTake(void *pxMutex);
+extern void vTraceMutexGivee(void *pxMutex);
 
-extern uint32 ullTasksOutTime[7];
-extern uint32 ullTasksInTime[7];
-extern uint32 ullTasksTotalTime[7];
+extern uint32 ullTasksOutTime[12];
+extern uint32 ullTasksInTime[12];
+extern uint32 ullTasksTotalTime[12];
+extern uint32 lockStartTime[12];
+extern uint32 lockTime[12];
+
+
+typedef struct {
+    void *mutex; // Was xSemaphoreHandle
+    const char *name;
+    uint32_t lockStartTime;
+    uint32_t totalLockTime;
+} MutexStats;
+
 
 #define traceTASK_SWITCHED_IN()                                    \
-do{                                                                \
-    uint32 taskInTag = (uint32)(pxCurrentTCB->pxTaskTag);          \
-    ullTasksInTime[taskInTag] = GPTM_WTimer0Read();                \
-}while(0);
+        do{                                                                \
+            uint32 taskInTag = (uint32)(pxCurrentTCB->pxTaskTag);          \
+            ullTasksInTime[taskInTag] = GPTM_WTimer0Read();                \
+        }while(0);
 
 #define traceTASK_SWITCHED_OUT()                                                                 \
-do{                                                                                              \
-    uint32 taskOutTag = (uint32)(pxCurrentTCB->pxTaskTag);                                       \
-    ullTasksOutTime[taskOutTag] = GPTM_WTimer0Read();                                            \
-    ullTasksTotalTime[taskOutTag] += ullTasksOutTime[taskOutTag] - ullTasksInTime[taskOutTag];   \
-}while(0);
+        do{                                                                                              \
+            uint32 taskOutTag = (uint32)(pxCurrentTCB->pxTaskTag);                                       \
+            ullTasksOutTime[taskOutTag] = GPTM_WTimer0Read();                                            \
+            ullTasksTotalTime[taskOutTag] += ullTasksOutTime[taskOutTag] - ullTasksInTime[taskOutTag];   \
+        }while(0);
 
 
 
+
+extern MutexStats mutexStats[11];
+
+
+#define traceQUEUE_RECEIVE(pxQueue) \
+        do { \
+            int index = getMutexIndex((void *)pxQueue); \
+            if(index != -1) \
+            { \
+                mutexStats[index].lockStartTime = GPTM_WTimer0Read();              \
+            }\
+        } while (0)
+
+
+#define traceQUEUE_SEND(pxQueue) \
+        do { \
+            int index = getMutexIndex((void *)pxQueue); \
+            if(index != -1) \
+            { \
+                mutexStats[index].totalLockTime = GPTM_WTimer0Read() - mutexStats[index].lockStartTime;   \
+            }\
+        } while (0)
+
+/* #define traceQUEUE_SEND(pxQueue) \
+        do { \
+            void* TaskHandle = xTaskGetCurrentTaskHandle(); \
+            const char* pcTaskName; \
+            if(TaskHandle != NULL) pcTaskName = pcTaskGetName(TaskHandle); \
+            else pcTaskName = "Unnamed"; \
+            const char *pcQueueName = pcQueueGetName((QueueHandle_t)(pxQueue)); \
+            UART0_SendString("Task "); \
+            UART0_SendString(pcTaskName ? pcTaskName : "Unknown"); \
+            UART0_SendString(" finished using "); \
+            UART0_SendString(pcQueueName ? pcQueueName : "Unnamed"); \
+            UART0_SendString("\r\n"); \
+            int index = getMutexIndex((void *)pxQueue); \
+            if(index != -1) \
+            { \
+                mutexStats[index].totalLockTime = GPTM_WTimer0Read() - mutexStats[index].lockStartTime;              \
+                UART0_SendInteger(mutexStats[index].totalLockTime); \
+            }\
+        } while (0)*/
+
+
+/*#define traceQUEUE_RECEIVE(pxQueue) \
+        do { \
+            const char *pcTaskName = pcTaskGetName(xTaskGetCurrentTaskHandle()); \
+            const char *pcQueueName = pcQueueGetName((QueueHandle_t)(pxQueue)); \
+            UART0_SendString("Task "); \
+            UART0_SendString(pcTaskName ? pcTaskName : "Unknown"); \
+            UART0_SendString(" blocked on "); \
+            UART0_SendString(pcQueueName ? pcQueueName : "Unnamed"); \
+            UART0_SendString("\r\n"); \
+            int index = getMutexIndex((void *)pxQueue); \
+            if(index != -1) \
+            { \
+                mutexStats[index].lockStartTime = GPTM_WTimer0Read();              \
+                UART0_SendInteger(mutexStats[index].lockStartTime); \
+            }\
+        } while (0)
+ * */
 /* Normal assert() semantics without relying on the provision of an assert.h header file. */
 #define configASSERT( x ) if( ( x ) == 0 ) { taskDISABLE_INTERRUPTS(); for( ;; ); }
 
