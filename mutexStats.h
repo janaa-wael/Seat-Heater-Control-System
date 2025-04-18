@@ -6,7 +6,7 @@ typedef void * xSemaphoreHandle;
 
 typedef struct {
     xSemaphoreHandle mutex;
-    const char *name;
+    const uint8_t *name;
     uint32_t lockStartTime;
     uint32_t totalLockTime;
 } MutexStats;

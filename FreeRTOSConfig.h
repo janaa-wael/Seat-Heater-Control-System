@@ -197,32 +197,33 @@ extern MutexStats mutexStats[11];
             int index = getMutexIndex((void *)pxQueue); \
             if(index != -1) \
             { \
-                mutexStats[index].totalLockTime = GPTM_WTimer0Read() - mutexStats[index].lockStartTime;   \
+                mutexStats[index].totalLockTime += GPTM_WTimer0Read() - mutexStats[index].lockStartTime;   \
             }\
         } while (0)
+/*
 
-/* #define traceQUEUE_SEND(pxQueue) \
+#define traceQUEUE_SEND(pxQueue) \
         do { \
             void* TaskHandle = xTaskGetCurrentTaskHandle(); \
             const char* pcTaskName; \
             if(TaskHandle != NULL) pcTaskName = pcTaskGetName(TaskHandle); \
             else pcTaskName = "Unnamed"; \
             const char *pcQueueName = pcQueueGetName((QueueHandle_t)(pxQueue)); \
-            UART0_SendString("Task "); \
-            UART0_SendString(pcTaskName ? pcTaskName : "Unknown"); \
-            UART0_SendString(" finished using "); \
-            UART0_SendString(pcQueueName ? pcQueueName : "Unnamed"); \
-            UART0_SendString("\r\n"); \
             int index = getMutexIndex((void *)pxQueue); \
             if(index != -1) \
             { \
                 mutexStats[index].totalLockTime = GPTM_WTimer0Read() - mutexStats[index].lockStartTime;              \
                 UART0_SendInteger(mutexStats[index].totalLockTime); \
             }\
-        } while (0)*/
+            UART0_SendString("  :"); \
+            UART0_SendString(pcTaskName ? pcTaskName : "Unknown"); \
+            UART0_SendString(" finished using "); \
+            UART0_SendString(pcQueueName ? pcQueueName : "Unnamed"); \
+            UART0_SendString("\r\n"); \
+        } while (0)
 
 
-/*#define traceQUEUE_RECEIVE(pxQueue) \
+#define traceQUEUE_RECEIVE(pxQueue) \
         do { \
             const char *pcTaskName = pcTaskGetName(xTaskGetCurrentTaskHandle()); \
             const char *pcQueueName = pcQueueGetName((QueueHandle_t)(pxQueue)); \
@@ -237,8 +238,8 @@ extern MutexStats mutexStats[11];
                 mutexStats[index].lockStartTime = GPTM_WTimer0Read();              \
                 UART0_SendInteger(mutexStats[index].lockStartTime); \
             }\
-        } while (0)
- * */
+        } while (0)*/
+
 /* Normal assert() semantics without relying on the provision of an assert.h header file. */
 #define configASSERT( x ) if( ( x ) == 0 ) { taskDISABLE_INTERRUPTS(); for( ;; ); }
 
