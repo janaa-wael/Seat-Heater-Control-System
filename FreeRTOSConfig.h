@@ -178,6 +178,7 @@ typedef struct {
             ullTasksOutTime[taskOutTag] = GPTM_WTimer0Read();                                               \
             if(end_of_task_flags[taskOutTag] == 0) ullTasksExecutionTime[taskOutTag] = ullTasksOutTime[taskOutTag] - ullTasksInTime[taskOutTag]; \
             else ullTasksExecutionTime[taskOutTag] += ullTasksOutTime[taskOutTag] - ullTasksInTime[taskOutTag];   \
+            ullTasksTotalTime[taskOutTag] += ullTasksOutTime[taskOutTag] - ullTasksInTime[taskOutTag]; \
         }while(0);
 
 
