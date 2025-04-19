@@ -25,9 +25,6 @@
 #define DRIVER_SEAT          0
 #define PASSENGER_SEAT       1
 
-
-
-
 void(*(arr_BlueLedOn[2]))(void) = {GPIO_BlueLedOn, GPIO_Blue2LedOn};
 void(*(arr_RedLedOn[2]))(void) =  {GPIO_RedLedOn, GPIO_Red2LedOn};
 void(*(arr_RedLedOff[2]))(void) =  {GPIO_RedLedOff, GPIO_Red2LedOff};
@@ -70,7 +67,7 @@ uint32 ullTasksOutTime[MAX_TASKS];
 uint32 ullTasksInTime[MAX_TASKS];
 uint32 ullTasksTotalTime[MAX_TASKS];
 uint32 ullTasksExecutionTime[MAX_TASKS];
-
+uint8 end_of_task_flags[12];
 
 /* FreeRTOS Mutexes */
 xSemaphoreHandle xBtnSemaphore[2];
@@ -82,10 +79,6 @@ xSemaphoreHandle xLastFailureMutex[2];
 xSemaphoreHandle xLastHeatLvlMutex[2];
 xSemaphoreHandle xUART_Mutex;
 xSemaphoreHandle xSystemFailureSemaphore[2];
-
-
-
-
 
 
 MutexStats mutexStats[MAX_MUTEXES] = {0};
@@ -287,6 +280,8 @@ void vControlHeater(void *pvParameters)
                 xSemaphoreGive(xDesiredHeaterLvlMutex[seat_id]);
             }
         }
+        uint8 id = (uint32)(xTaskGetApplicationTaskTag(xTaskGetCurrentTaskHandle()));
+        end_of_task_flags[id] = 0;
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(CONTROL_HEATER_PERIODICITY));
     }
 }
@@ -324,6 +319,8 @@ void vReadTemperatureHandler(void *pvParameters)
         {
             UART0_SendString("Mutex timeout!");
         }
+        uint8 id = (uint32)(xTaskGetApplicationTaskTag(xTaskGetCurrentTaskHandle()));
+        end_of_task_flags[id] = 0;
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(READ_TEMP_PERIODICITY));
         //UART0_SendString("Read Temp\r\n");
     }
@@ -336,7 +333,7 @@ void vDisplayDataHandler(void *pvParameters)
 
     for(;;)
     {
-        if(xSemaphoreTake(xUART_Mutex, 0) == pdTRUE)
+        if(xSemaphoreTake(xUART_Mutex, portMAX_DELAY) == pdTRUE)
         {
             //uint32 start_time = GPTM_WTimer0Read();
             //UART0_SendString("Display\r\n");
@@ -377,7 +374,8 @@ void vDisplayDataHandler(void *pvParameters)
             //UART0_SendString("\r\n");
             xSemaphoreGive(xUART_Mutex);
         }
-
+        uint8 id = (uint32)(xTaskGetApplicationTaskTag(xTaskGetCurrentTaskHandle()));
+        end_of_task_flags[id] = 0;
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(DISPLAY_DATA_PERIODICITY));
 
     }
@@ -416,6 +414,8 @@ void vHeaterSettingHandler(void *pvParameters)
             }
             xSemaphoreGive(xDesiredHeaterLvlMutex[seat_id]);
         }
+        uint8 id = (uint32)(xTaskGetApplicationTaskTag(xTaskGetCurrentTaskHandle()));
+        end_of_task_flags[id] = 0;
         //UART0_SendString("Heater Setting\r\n");
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(HEATER_SETTING_PERIODICITY));
 
@@ -466,8 +466,9 @@ void vDiagnostics(void *pvParameters)
             Seat_Data[seat_id].last_heating_lvl.timestamp = Last_HeatLvl_Timestamp[seat_id];
             xSemaphoreGive(xLastHeatLvlMutex[seat_id]);
         }
+        uint8 id = (uint32)(xTaskGetApplicationTaskTag(xTaskGetCurrentTaskHandle()));
+        end_of_task_flags[id] = 0;
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(DIAGNOSTICS_PERIODICITY));
-
     }
 }
 
@@ -481,7 +482,7 @@ void vRuntimeMeasurements(void *pvParameters)
         uint32 ullTotalTasksTime = 0;
         for(ucCounter = 1; ucCounter < MAX_TASKS; ucCounter++)
         {
-            ullTotalTasksTime += ullTasksTotalTime[ucCounter];
+            ullTotalTasksTime += ullTasksExecutionTime[ucCounter];
         }
         ucCPU_Load = (ullTotalTasksTime * 100) /  GPTM_WTimer0Read();
         taskENTER_CRITICAL();
@@ -495,9 +496,9 @@ void vRuntimeMeasurements(void *pvParameters)
             UART0_SendString("Task ");
             UART0_SendInteger(ucCounter);
             UART0_SendString(": ");
-            UART0_SendInteger(ullTasksTotalTime[ucCounter]);
+            UART0_SendInteger(ullTasksExecutionTime[ucCounter]);
             UART0_SendString(" ticks / ");
-            UART0_SendInteger(ullTasksTotalTime[ucCounter] / 10);
+            UART0_SendInteger(ullTasksExecutionTime[ucCounter] / 10);
             UART0_SendString(" ms\r\n");
         }
         UART0_SendString("****************************\r\n* ");
@@ -513,6 +514,8 @@ void vRuntimeMeasurements(void *pvParameters)
         }
         UART0_SendString("~~~~~~~~~~~~~~~~~~~~~");
         taskEXIT_CRITICAL();
+        uint8 id = (uint32)(xTaskGetApplicationTaskTag(xTaskGetCurrentTaskHandle()));
+        end_of_task_flags[id] = 0;
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(RUNTIME_MEASUREMENTS_PERIODICITY));
     }
 }

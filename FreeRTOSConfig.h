@@ -151,8 +151,10 @@ extern void vTraceMutexGivee(void *pxMutex);
 extern uint32 ullTasksOutTime[12];
 extern uint32 ullTasksInTime[12];
 extern uint32 ullTasksTotalTime[12];
+extern uint32 ullTasksExecutionTime[12];
 extern uint32 lockStartTime[12];
 extern uint32 lockTime[12];
+extern uint8 end_of_task_flags[12];
 
 
 typedef struct {
@@ -167,16 +169,16 @@ typedef struct {
         do{                                                                \
             uint32 taskInTag = (uint32)(pxCurrentTCB->pxTaskTag);          \
             ullTasksInTime[taskInTag] = GPTM_WTimer0Read();                \
+            if(end_of_task_flags[taskInTag] == 0) end_of_task_flags[taskInTag] = 1; \
         }while(0);
 
-#define traceTASK_SWITCHED_OUT()                                                                 \
-        do{                                                                                              \
-            uint32 taskOutTag = (uint32)(pxCurrentTCB->pxTaskTag);                                       \
-            ullTasksOutTime[taskOutTag] = GPTM_WTimer0Read();                                            \
-            ullTasksTotalTime[taskOutTag] += ullTasksOutTime[taskOutTag] - ullTasksInTime[taskOutTag];   \
+#define traceTASK_SWITCHED_OUT()                                                                            \
+        do{                                                                                                 \
+            uint32 taskOutTag = (uint32)(pxCurrentTCB->pxTaskTag);                                          \
+            ullTasksOutTime[taskOutTag] = GPTM_WTimer0Read();                                               \
+            if(end_of_task_flags[taskOutTag] == 0) ullTasksExecutionTime[taskOutTag] = ullTasksOutTime[taskOutTag] - ullTasksInTime[taskOutTag]; \
+            else ullTasksExecutionTime[taskOutTag] += ullTasksOutTime[taskOutTag] - ullTasksInTime[taskOutTag];   \
         }while(0);
-
-
 
 
 extern MutexStats mutexStats[11];
@@ -187,7 +189,7 @@ extern MutexStats mutexStats[11];
             int index = getMutexIndex((void *)pxQueue); \
             if(index != -1) \
             { \
-                mutexStats[index].lockStartTime = GPTM_WTimer0Read();              \
+                mutexStats[index].lockStartTime = GPTM_WTimer0Read(); \
             }\
         } while (0)
 
